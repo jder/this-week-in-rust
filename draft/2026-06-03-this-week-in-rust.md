@@ -45,6 +45,8 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+- [Release!](https://crates.io/crates/rlx-tensor
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

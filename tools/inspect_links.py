@@ -318,7 +318,7 @@ def main():
         diags = [d for d in diags if d not in old_diags]
 
     if diags:
-        print("diagnostics exist:")
+        LOG.info("diagnostics exist:")
         for d in diags:
             print(d)
         sys.exit(1)

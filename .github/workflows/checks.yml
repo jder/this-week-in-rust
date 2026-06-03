@@ -88,9 +88,8 @@ jobs:
 
             body = (
                 f"Thank you for your contribution to This Week in Rust! Our automated checks found some possible issues with these changes:\n\n"
-                "```text\n"
                 f"{output}\n"
-                "```\n\n"
+                "\n\n"
                 f"You can see more details here: {os.environ['RUN_URL']}"
             )
 

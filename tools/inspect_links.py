@@ -51,7 +51,7 @@ diagnostics = Diagnostics()
 RE_FILENAME = re.compile(r'\d\d\d\d-\d\d-\d\d-this-week-in-rust.md$')
 
 # A regex that matches bare GitHub repo URLs.
-RE_GITHUB_REPO = re.compile(r'https://github.com/[^/]+/[^/]+$')
+RE_GITHUB_REPO = re.compile(r'https://github.com/[^/]+/[^/]+/?[^/]*$')
 
 # A block-list of tracking parameters
 TRACKING_PARAMETERS = set([

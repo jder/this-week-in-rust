@@ -297,7 +297,9 @@ def main():
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:
-        LOG.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
     LOG.debug(f'command-line arguments: {args}')
 
     diagnostics.include_warnings = args.show_warnings
@@ -326,11 +328,5 @@ def main():
         print("everything is ok!")
 
 
-def setup_logging():
-    log_stdout = logging.StreamHandler(sys.stdout)
-    logging.getLogger('').addHandler(log_stdout)
-
-
 if __name__ == "__main__":
-    setup_logging()
     main()

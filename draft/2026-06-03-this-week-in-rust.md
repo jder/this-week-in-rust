@@ -45,6 +45,11 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [give warning](https://github.com/foo/bar/)
+* [should be ok](https://github.com/squidowl/halloy/releases/tag/2026.7)
+
+<canvas>bad markdown</canvas>
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

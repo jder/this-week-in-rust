@@ -18,7 +18,6 @@ import pygit2
 import urllib.parse
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.INFO)
 
 
 class Diagnostics:

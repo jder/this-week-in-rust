@@ -54,7 +54,7 @@ jobs:
             set +e
             python3 tools/inspect_links.py \
                 --since "${{ steps.base.outputs.base }}" \
-                --show-warnings > "$CHECK_OUTPUT_FILE" 2>&1
+                --show-warnings > "$CHECK_OUTPUT_FILE"
             status="$?"
             cat "$CHECK_OUTPUT_FILE"
 

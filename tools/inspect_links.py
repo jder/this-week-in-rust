@@ -321,7 +321,7 @@ def main():
     if diags:
         LOG.info("diagnostics exist:")
         for d in diags:
-            print(d)
+            print(f"* {d}")
         sys.exit(1)
     else:
         print("everything is ok!")

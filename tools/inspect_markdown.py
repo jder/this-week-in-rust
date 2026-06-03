@@ -12,7 +12,12 @@ import argparse
 import bs4
 import markdown
 import sys
-from inspect_links import diagnostics, get_recent_files, setup_logging
+from inspect_links import diagnostics, get_recent_files
+import logging
+
+
+LOG = logging.getLogger(__name__)
+
 
 """
 This is a collection of html tags that have appeared in past issues.
@@ -34,11 +39,11 @@ def render_file(filename):
 
         # Empty backticks don't make much sense.
         if line.count('``') > 0:
-            diagnostics.warn(f'{filename}: found empty backticks: "{line}"')
+            diagnostics.error(f'{filename}: found empty backticks: "{line}"')
 
         c = line.count('`')
         if c % 2 != 0:
-            diagnostics.warn(f'{filename}: found odd backticks: "{line}"')
+            diagnostics.error(f'{filename}: found odd backticks: "{line}"')
 
     html = markdown.markdown(md_text)
     return html
@@ -50,11 +55,11 @@ def check_tags(html, file):
     for tag in bs4.BeautifulSoup(html, 'html.parser').find_all():
         if tag.name not in VALID_TAGS:
             tag_str = str(tag)[:50]
-            diagnostics.warn(
+            diagnostics.error(
                 f'{file}: unrecognized tag {tag.name} in "{tag_str}"')
         if tag.name == 'li':
             if tag.get_text() == '':
-                diagnostics.warn(f'{file}: empty <{tag.name}> tag after {prev_tag}')
+                diagnostics.error(f'{file}: empty <{tag.name}> tag after {prev_tag}')
         prev_tag = tag
 
 def main():
@@ -75,15 +80,14 @@ def main():
 
 
 if __name__ == "__main__":
-    setup_logging()
-    diagnostics.include_warnings = True
+    logging.basicConfig(level=logging.INFO)
     main()
 
-    warns = diagnostics.get()
-    if warns:
-        print("warnings exist:")
-        for w in warns:
-            print(w)
+    diags = diagnostics.get()
+    if diags:
+        LOG.info("diagnostics exist:")
+        for d in diags:
+            print(f"* {d}")
         sys.exit(1)
     else:
         print("everything is ok!")

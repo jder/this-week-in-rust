@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   Run-Markdown-Checks:
@@ -29,23 +30,78 @@ jobs:
           update-pip: "false"
           update-setuptools: "false"
           update-wheel: "false"
-      - name: Compute diff base
+      - name: Compute PR diff base
+        if: ${{ github.event_name == 'pull_request' }}
         id: base
         shell: bash
         run: |
-            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-                BASE="$(git merge-base \
-                    "${{ github.event.pull_request.base.sha }}" \
-                    "${{ github.event.pull_request.head.sha }}")"
-            elif [[ "${{ github.event_name }}" == "push" ]]; then
-                BASE="${{ github.event.before }}"
-            else
-                echo "Unsupported event: ${{ github.event_name }}" >&2
-                exit 1
-            fi
+            BASE="$(git merge-base \
+                "${{ github.event.pull_request.base.sha }}" \
+                "${{ github.event.pull_request.head.sha }}")"
 
             echo "base=$BASE" >> "$GITHUB_OUTPUT"
-      - name: inspect_links
-        run: python3 tools/inspect_links.py --since "${{ steps.base.outputs.base }}"
+      - name: inspect_links for main
+        if: ${{ github.event_name == 'push' }}
+        run: python3 tools/inspect_links.py
+      - name: inspect_links for pull request
+        if: ${{ github.event_name == 'pull_request' }}
+        id: inspect_links_pr
+        shell: bash
+        env:
+          CHECK_OUTPUT_FILE: ${{ runner.temp }}/inspect-links-pr.txt
+        run: |
+            set +e
+            python3 tools/inspect_links.py \
+                --since "${{ steps.base.outputs.base }}" \
+                --show-warnings > "$CHECK_OUTPUT_FILE" 2>&1
+            status="$?"
+            cat "$CHECK_OUTPUT_FILE"
+
+            if [[ "$status" -eq 0 ]]; then
+                echo "failed=false" >> "$GITHUB_OUTPUT"
+            else
+                echo "failed=true" >> "$GITHUB_OUTPUT"
+            fi
+
+            echo "status=$status" >> "$GITHUB_OUTPUT"
+            exit 0
+      - name: Comment on PR link check output
+        if: ${{ github.event_name == 'pull_request' && steps.inspect_links_pr.outputs.failed == 'true' }}
+        shell: bash
+        env:
+          CHECK_OUTPUT_FILE: ${{ runner.temp }}/inspect-links-pr.txt
+          CHECK_STATUS: ${{ steps.inspect_links_pr.outputs.status }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+            python3 - <<'PY'
+            import json
+            import os
+            from pathlib import Path
+
+            output = Path(os.environ["CHECK_OUTPUT_FILE"]).read_text().strip()
+            if not output:
+                output = "<no output>"
+
+            body = (
+                f"Thank you for your contribution to This Week in Rust! Our automated checks found some possible issues with these changes:\n\n"
+                "```text\n"
+                f"{output}\n"
+                "```\n\n"
+                f"You can see more details here: {os.environ['RUN_URL']}"
+            )
+
+            if len(body) > 60000:
+                body = body[:59900] + "\n\n... truncated"
+
+            Path("comment.json").write_text(json.dumps({"body": body}))
+            PY
+
+            gh api \
+                --method POST \
+                "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+                --input comment.json
       - name: inspect_markdown
         run: python3 tools/inspect_markdown.py --num-recent 5

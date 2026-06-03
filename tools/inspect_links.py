@@ -21,31 +21,37 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 
-class Warnings:
-    """ A singleton object for gathering warnings to be printed later. """
+class Diagnostics:
+    """ A singleton object for gathering diagnostics to be printed later. """
 
     def __init__(self):
-        self.warnings = []
-        self.silent = False
+        self._diagnostics = []
+        self.include_warnings = False
 
     def warn(self, msg):
-        if not self.silent:
-            self.warnings.append(msg)
+        if self.include_warnings:
+            self._diagnostics.append(msg)
+
+    def error(self, msg):
+        self._diagnostics.append(msg)
 
     def get(self):
-        return self.warnings
+        return self._diagnostics
 
     def get_and_clear(self):
-        to_return = self.warnings
-        self.warnings = []
+        to_return = self._diagnostics
+        self._diagnostics = []
         return to_return
 
 
-# The singleton object that gathers warnings, for later reporting.
-warnings = Warnings()
+# The singleton object that gathers warnings & errors, for later reporting.
+diagnostics = Diagnostics()
 
 # A regex that matches filenames to inspect.
 RE_FILENAME = re.compile(r'\d\d\d\d-\d\d-\d\d-this-week-in-rust.md$')
+
+# A regex that matches bare GitHub repo URLs.
+RE_GITHUB_REPO = re.compile(r'https://github.com/[^/]+/[^/]+$')
 
 # A block-list of tracking parameters
 TRACKING_PARAMETERS = set([
@@ -74,24 +80,18 @@ def check_truncated_title(tag):
 
     Links collected from Discord may be truncated to a length of exactly
     70 characters, including a "..." suffix.
-
-    If we're unlucky enough to trigger this warning by mistake, here are
-    some workarounds:
-    - Make any change to the title so that it's not exactly 70 characters
-      (e.g. add an extra space between words)
-    - Replace the "..." with unicode "…"
     """
     title = tag.string
     LOG.debug(f'link title: {repr(title)}')
     if title and title.endswith('...') and len(title) == 70:
-        warnings.warn(f'truncated link title: {repr(title)}')
+        diagnostics.warn(f'this link title may be unintentionally truncated: {repr(title)}')
 
-def check_domain(domain, url):
-  if domain.lower() == "github.com":
-    warnings.warn(f"link {url} is to github.com -- we do not usually include links directly to GitHub repos; "
+def check_suspicious(domain, url):
+  if RE_GITHUB_REPO.match(url):
+    diagnostics.warn(f"link {url} is directly to a GitHub repo; "
       "please double check our guidelines here: https://github.com/rust-lang/this-week-in-rust#projectstooling-updates")
   elif domain.lower() == "crates.io":
-    warnings.warn(f"link {url} is to crates.io -- we do not usually include links directly to crates on crates.io; "
+    diagnostics.warn(f"link {url} is to crates.io -- we do not usually include links directly to crates on crates.io; "
       "please double check our guidelines here: https://github.com/rust-lang/this-week-in-rust#projectstooling-updates")
 
 def extract_links(html):
@@ -103,7 +103,7 @@ def extract_links(html):
     account, for example).
 
     Side-effects:
-    - If links are malformed, warnings may be recorded. See `parse_url`
+    - If links are malformed, diagnostics may be recorded. See `parse_url`
       for details.
 
     """
@@ -156,7 +156,7 @@ def scrub_parameters(url, query):
 
     # Store a warning if
     if found_tracking:
-        warnings.warn(f'found tracking parameters on {url}: {found_tracking}')
+        diagnostics.error(f'found tracking parameters on {url}: {found_tracking}')
 
     # If there are no query parameters left, return the empty string.
     if not filtered_dict:
@@ -174,14 +174,14 @@ def parse_url(link):
     - "http" and "https" URLs are considered the same.
     - consecutive slashes and trailing slashes are ignored.
 
-    Warnings may be issued if unnecessary tracking parameters are found,
+    Diagnostics may be issued if unnecessary tracking parameters are found,
     or if the URL contains consecutive slashes.
     """
     parsed_url = urllib.parse.urlsplit(link)
 
     scheme = parsed_url.scheme
     if scheme not in ('mailto', 'http', 'https'):
-        warnings.warn(f'possibly malformed link: {link}')
+        diagnostics.error(f'unexpected/malformed link scheme: {link}')
     if scheme == 'http':
         scheme = 'https'
 
@@ -208,7 +208,7 @@ def parse_url(link):
     reconstituted = urllib.parse.urlunsplit((sch, loc, path, query, frag))
     if reconstituted != link:
         LOG.debug(f'reconstituted: {reconstituted}')
-        warnings.warn(f'link can be simplified: {link} -> {reconstituted}')
+        diagnostics.error(f'link can be simplified: {link} -> {reconstituted}')
 
     # Strip any trailing slashes, again.
     path = path.rstrip('/')
@@ -217,7 +217,7 @@ def parse_url(link):
     # need to warn about
     reconstituted = urllib.parse.urlunsplit((scheme, loc, path, query, frag))
 
-    check_domain(loc, link)
+    check_suspicious(loc, link)
 
     return reconstituted
 
@@ -269,7 +269,7 @@ def get_recent_files(dirs, count):
 
 
 def inspect_files(file_list: list[str], *, tree: Union[pygit2.Tree, None] = None):
-    """ Inspect a set of files, storing warnings about duplicate links. """
+    """ Inspect a set of files, storing errors about duplicate links. """
     linkset = {}
 
     for index, file in enumerate(file_list):
@@ -278,7 +278,7 @@ def inspect_files(file_list: list[str], *, tree: Union[pygit2.Tree, None] = None
         for link in links:
             collision = linkset.get(link)
             if collision:
-                warnings.warn(
+                diagnostics.error(
                     f"possible duplicate link {link} in file {file} (also found in {collision}")
             else:
                 linkset[link] = file
@@ -291,16 +291,20 @@ def main():
     parser.add_argument('--num-recent', default=25, type=int,
                         help="Number of recent files to inspect")
     parser.add_argument('--since', default=None, type=str,
-                        help="Show only warnings which appear after the given git commit")
+                        help="Show only diagnostics which appear after the given git commit")
+    parser.add_argument("--show-warnings", default=False, action='store_true',
+                        help="Show warnings as well as errors")
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     if args.debug:
         LOG.setLevel(logging.DEBUG)
     LOG.debug(f'command-line arguments: {args}')
+
+    diagnostics.include_warnings = args.show_warnings
     file_list = get_recent_files(args.paths, args.num_recent)
     inspect_files(file_list)
 
-    warns = warnings.get_and_clear()
+    diags = diagnostics.get_and_clear()
 
     if args.since:
         try:
@@ -310,13 +314,13 @@ def main():
 
         LOG.info(f"inspecting files since commit {args.since}")
         inspect_files(file_list, tree=tree)
-        old_warns = set(warnings.get_and_clear())
-        warns = [w for w in warns if w not in old_warns]
+        old_diags = set(diagnostics.get_and_clear())
+        diags = [d for d in diags if d not in old_diags]
 
-    if warns:
-        print("warnings exist:")
-        for w in warns:
-            print(w)
+    if diags:
+        print("diagnostics exist:")
+        for d in diags:
+            print(d)
         sys.exit(1)
     else:
         print("everything is ok!")

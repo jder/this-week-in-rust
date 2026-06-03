@@ -39,6 +39,8 @@ and just ask the editors to select the category.
 
 ### Official
 
+* [Foo](https://github.com/jder/this-week-in-rust) is great
+
 ### Foundation
 
 ### Newsletters

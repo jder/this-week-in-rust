@@ -116,10 +116,8 @@ jobs:
                 if not output:
                     output = "<no output>"
                 return (
-                    f"### {title} (exit status {os.environ[status_env]})\n\n"
-                    "```text\n"
+                    f"### {title}\n\n"
                     f"{output}\n"
-                    "```"
                 )
 
             sections = [

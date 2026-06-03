@@ -41,6 +41,8 @@ and just ask the editors to select the category.
 
 ### Foundation
 
+* [test](https://github.com/foo/bar/)
+
 ### Newsletters
 
 ### Project/Tooling Updates

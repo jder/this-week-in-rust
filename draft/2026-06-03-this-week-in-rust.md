@@ -39,6 +39,11 @@ and just ask the editors to select the category.
 
 ### Official
 
+* [give warning](https://github.com/foo/bar/)Expand commentComment on line R48
+* [should be ok](https://github.com/squidowl/halloy/releases/tag/2026.7)
+
+<canvas>bad markdown</canvas>Expand comment
+
 ### Foundation
 
 ### Newsletters

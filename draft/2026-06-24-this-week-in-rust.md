@@ -47,6 +47,8 @@ and just ask the editors to select the category.
 
 ### Observations/Thoughts
 
+* demo markdown error with an unmatched `backtick
+
 ### Rust Walkthroughs
 
 ### Research

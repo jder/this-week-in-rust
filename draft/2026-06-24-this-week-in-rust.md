@@ -45,6 +45,9 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [demo warning: bare GitHub repo after permission cleanup](https://github.com/rust-lang/cargo)
+* [demo warning: crates.io crate after permission cleanup](https://crates.io/crates/tokio)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

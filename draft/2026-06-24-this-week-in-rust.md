@@ -45,6 +45,9 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [demo warning: bare GitHub repo](https://github.com/rust-lang/rust)
+* [demo warning: crates.io crate](https://crates.io/crates/serde)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

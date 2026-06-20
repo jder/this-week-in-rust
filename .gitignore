@@ -8,6 +8,7 @@ cache
 .sass-cache
 **/.idea
 .DS_Store
+.*
 
 # Publishing creations...
 publishing/email
@@ -15,3 +16,6 @@ publishing/output*
 publishing/juice
 
 draft/cft_rfc_fcp_draft_template.md
+
+# Rust tooling
+target/

@@ -45,6 +45,8 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [test](https://github.com/jder/this-week-in-rust)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

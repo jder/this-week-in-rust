@@ -45,6 +45,8 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [Tracking parameter test](https://example.com/rust-tool?utm_source=twir-test)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

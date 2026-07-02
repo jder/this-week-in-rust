@@ -8,6 +8,9 @@ cache
 .sass-cache
 **/.idea
 .DS_Store
+.*
+!.github/
+!.github/**
 
 # Publishing creations...
 publishing/email

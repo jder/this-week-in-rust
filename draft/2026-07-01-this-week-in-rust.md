@@ -39,6 +39,9 @@ and just ask the editors to select the category.
 
 ### Official
 
+<blink>Intentional check failure.</blink>
+* [Intentional duplicate check failure](https://example.com/twir-intentional-duplicate)
+* [Intentional duplicate check failure again](https://example.com/twir-intentional-duplicate)
 * [Announcing Rust 1.96.1 | Rust Blog](https://blog.rust-lang.org/2026/06/30/Rust-1.96.1/)
 * [The many journeys of learning Rust | Rust Blog](https://blog.rust-lang.org/2026/06/25/vision-doc-journeys-to-learning-rust/)
 

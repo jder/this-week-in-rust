@@ -29,6 +29,8 @@ jobs:
           update-pip: "false"
           update-setuptools: "false"
           update-wheel: "false"
+      - name: Test validation contract
+        run: python3 -m unittest discover -s tools/validation_tests -p 'test_*.py'
       - name: Compute PR diff base
         if: ${{ github.event_name == 'pull_request' }}
         id: base

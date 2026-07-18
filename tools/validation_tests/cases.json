@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "link_cases": [
+    {
+      "id": "strict-section-links-are-extracted",
+      "markdown": "# This Week in Rust\n\n## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Example](https://example.com/post)\n",
+      "links": ["https://example.com/post"],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "id": "non-strict-section-links-are-ignored",
+      "markdown": "# This Week in Rust\n\n* [Outside](https://example.com/outside)\n\n## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Inside](https://example.com/inside)\n",
+      "links": ["https://example.com/inside"],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "id": "http-is-equivalent-to-https",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Example](http://example.com/post)\n",
+      "links": ["https://example.com/post"],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "id": "tracking-parameters-are-errors-and-removed",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Example](https://example.com/post?utm_source=newsletter&keep=one&keep=two)\n",
+      "links": ["https://example.com/post?keep=one&keep=two"],
+      "errors": [
+        "found tracking parameters on https://example.com/post?utm_source=newsletter&keep=one&keep=two: ['utm_source']",
+        "link can be simplified: https://example.com/post?utm_source=newsletter&keep=one&keep=two -> https://example.com/post?keep=one&keep=two"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "consecutive-slashes-are-an-error-and-normalized",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Example](https://example.com//post///)\n",
+      "links": ["https://example.com/post"],
+      "errors": [
+        "link can be simplified: https://example.com//post/// -> https://example.com/post/"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "unexpected-url-schemes-are-errors",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Example](ftp://example.com)\n",
+      "links": ["ftp://example.com"],
+      "errors": [
+        "unexpected/malformed link scheme: ftp://example.com",
+        "link can be simplified: ftp://example.com -> ftp://example.com/"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "bare-github-repositories-are-warnings",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Rust](https://github.com/rust-lang/rust)\n",
+      "links": ["https://github.com/rust-lang/rust"],
+      "errors": [],
+      "warnings": [
+        "link https://github.com/rust-lang/rust is directly to a GitHub repo; please double check our guidelines here: https://github.com/rust-lang/this-week-in-rust#projectstooling-updates"
+      ]
+    },
+    {
+      "id": "github-subpages-are-not-bare-repository-warnings",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [PR](https://github.com/rust-lang/rust/pull/1)\n",
+      "links": ["https://github.com/rust-lang/rust/pull/1"],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "id": "crates-io-is-a-warning",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Serde](https://crates.io/crates/serde)\n",
+      "links": ["https://crates.io/crates/serde"],
+      "errors": [],
+      "warnings": [
+        "link https://crates.io/crates/serde is to crates.io -- we do not usually include links directly to crates on crates.io; please double check our guidelines here: https://github.com/rust-lang/this-week-in-rust#projectstooling-updates"
+      ]
+    },
+    {
+      "id": "truncated-discord-titles-are-warnings",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...](https://example.com/post)\n",
+      "links": ["https://example.com/post"],
+      "errors": [],
+      "warnings": [
+        "this link title may be unintentionally truncated: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...'"
+      ]
+    },
+    {
+      "id": "parenthesized-urls-must-use-markdown-link-syntax",
+      "source": "PR #8367 before the formatting correction in 822dc5bef",
+      "markdown": "## Updates from Rust Community\n\n### Observations/Thoughts\n\n* Open Source Security Podcast (https://opensourcesecurity.io/2026/2026-07-rfmf-lori-niko/)\n",
+      "links": [],
+      "errors": [
+        "bare URL is not a markdown link: https://opensourcesecurity.io/2026/2026-07-rfmf-lori-niko/"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "historical-malformed-nested-link-is-rejected",
+      "source": "draft/2026-07-08-this-week-in-rust.md before ff3ed607d Fix blog link to k8s-scale-app-rs",
+      "markdown": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [k8s-scale-app-rs]([https://github.com/git001/k8s-scale-app-rs](https://blog.none.at/blog/2026/2026-07-06-k8s-scale-app-rs/))\n",
+      "errors": [
+        "unexpected/malformed link scheme: [https://github.com/git001/k8s-scale-app-rs](https://blog.none.at/blog/2026/2026-07-06-k8s-scale-app-rs/)",
+        "link can be simplified: [https://github.com/git001/k8s-scale-app-rs](https://blog.none.at/blog/2026/2026-07-06-k8s-scale-app-rs/) -> [https:/github.com/git001/k8s-scale-app-rs](https:/blog.none.at/blog/2026/2026-07-06-k8s-scale-app-rs/)"
+      ],
+      "warnings": []
+    }
+  ],
+  "duplicate_cases": [
+    {
+      "id": "duplicates-in-one-file-are-errors",
+      "files": {
+        "one.md": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [First](https://example.com/post)\n* [Second](https://example.com/post)\n"
+      },
+      "errors": [
+        "possible duplicate link https://example.com/post found twice in one.md"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "canonical-equivalents-duplicate-across-files",
+      "files": {
+        "first.md": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [First](http://example.com/post/)\n",
+        "second.md": "## Updates from Rust Community\n\n### Project/Tooling Updates\n\n* [Second](https://example.com/post)\n"
+      },
+      "errors": [
+        "possible duplicate link https://example.com/post in file second.md (also found in first.md)"
+      ],
+      "warnings": []
+    }
+  ],
+  "markdown_cases": [
+    {
+      "id": "ordinary-markdown-is-clean",
+      "markdown": "## A title\n\n* [Example](https://example.com/post)\n",
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "id": "odd-backticks-are-errors",
+      "markdown": "* unmatched `backtick\n",
+      "errors": [
+        "case.md: found odd backticks: \"* unmatched `backtick\""
+      ],
+      "warnings": []
+    },
+    {
+      "id": "empty-backticks-are-errors",
+      "markdown": "* empty `` backticks\n",
+      "errors": [
+        "case.md: found empty backticks: \"* empty `` backticks\""
+      ],
+      "warnings": []
+    },
+    {
+      "id": "unknown-html-tags-are-errors",
+      "markdown": "<blink>bad</blink>\n",
+      "errors": [
+        "case.md: unrecognized tag \"blink\" in `<blink>bad</blink>`"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "empty-list-items-are-errors",
+      "markdown": "* \n* present\n",
+      "errors": [
+        "case.md: empty <li> tag after <ul>\n<li></li>\n<li>present</li>\n</ul>"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "blank-lines-split-markdown-lists",
+      "source": "This Week in Rust 660 Project/Tooling Updates",
+      "markdown": "* [First](https://example.com/first)\n\n* [Second](https://example.com/second)\n",
+      "errors": [
+        "case.md: blank line splits a Markdown list"
+      ],
+      "warnings": []
+    },
+    {
+      "id": "fenced-code-content-is-still-scanned-line-by-line",
+      "markdown": "```\nlet value = `;\n```\n",
+      "errors": [
+        "case.md: found odd backticks: \"let value = `;\""
+      ],
+      "warnings": []
+    }
+  ],
+  "corpus_cases": [
+    {
+      "id": "recent-published-issues-are-clean",
+      "source_revision": "4dac92852df42ef367dc244a675b70c77810951d",
+      "paths": [
+        "content/2026-05-13-this-week-in-rust.md",
+        "content/2026-05-20-this-week-in-rust.md",
+        "content/2026-05-27-this-week-in-rust.md",
+        "content/2026-06-03-this-week-in-rust.md",
+        "content/2026-06-10-this-week-in-rust.md",
+        "content/2026-06-17-this-week-in-rust.md",
+        "content/2026-06-24-this-week-in-rust.md",
+        "content/2026-07-01-this-week-in-rust.md",
+        "content/2026-07-08-this-week-in-rust.md",
+        "content/2026-07-15-this-week-in-rust.md"
+      ],
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

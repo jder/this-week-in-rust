@@ -19,6 +19,7 @@ use url::Url;
 
 mod marker;
 mod md;
+pub mod validation;
 
 const GITHUB_OWNER: &str = "rust-lang";
 const GITHUB_REPO: &str = "this-week-in-rust";
@@ -281,6 +282,21 @@ fn run_merge(args: MergeArgs) -> Result<()> {
     info!("reading edited buffer {}", context.draft_rel.display());
     let edited = fs::read_to_string(context.workdir.join(&context.draft_rel))
         .with_context(|| format!("read edited buffer {}", context.draft_rel.display()))?;
+    let validation = validation::inspect_text(&context.draft_rel.display().to_string(), &edited);
+    for warning in validation.warnings {
+        warn!("validation warning: {warning}");
+    }
+    if !validation.errors.is_empty() {
+        bail!(
+            "validation failed:\n{}",
+            validation
+                .errors
+                .iter()
+                .map(|error| format!("* error: {error}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+    }
     info!("parsing edited buffer");
     let parsed = parse_edited_buffer(&edited)?;
     if parsed.included.is_empty() {

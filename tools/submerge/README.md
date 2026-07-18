@@ -43,12 +43,14 @@ Deleting a link and its metadata will result in that PR being untouched by later
 
 ### Run the usual checks
 
-Review the content manually, run these tools:
+Review the content manually, then run the Rust validation tool:
 
 ```
-python3 tools/inspect_links.py
-python3 tools/inspect_markdown.py
+submerge-inspect --show-warnings
 ```
+
+`submerge merge` runs the same checks on the selected draft and refuses to create
+a merge commit if it finds errors.
 
 ### Create the merge commit
 

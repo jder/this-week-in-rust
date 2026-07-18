@@ -50,6 +50,10 @@ RE_FILENAME = re.compile(r'\d\d\d\d-\d\d-\d\d-this-week-in-rust.md$')
 # A regex that matches bare GitHub repo URLs.
 RE_GITHUB_REPO = re.compile(r'https://github.com/[^/]+/[^/]+/?[^/]*$')
 
+# A parenthesized URL is rendered as text rather than a Markdown link. This is
+# an easy formatting mistake to make when adding a submission by hand.
+RE_PARENTHESIZED_URL = re.compile(r'\((https?://[^()\s]+)\)')
+
 # A block-list of tracking parameters
 TRACKING_PARAMETERS = set([
     'utm_source',
@@ -106,7 +110,7 @@ def extract_links(html):
 
     """
     strict_mode = False
-    tags = ['a', 'h1', 'h2', 'h3', 'h4']
+    tags = ['a', 'h1', 'h2', 'h3', 'h4', 'p', 'li']
     urls = []
 
     # Remember the header level (h2, h3, etc) when we turned on
@@ -121,6 +125,12 @@ def extract_links(html):
                 check_truncated_title(tag)
                 trimmed_url = parse_url(link)
                 urls.append(trimmed_url)
+        elif tag.name in ('p', 'li'):
+            if strict_mode:
+                for text in tag.find_all(string=True, recursive=False):
+                    for match in RE_PARENTHESIZED_URL.finditer(text):
+                        diagnostics.error(
+                            f'bare URL is not a markdown link: {match.group(1)}')
         else:
             level = tag.name
             if header_level and level > header_level:

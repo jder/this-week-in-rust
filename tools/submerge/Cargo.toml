@@ -17,6 +17,7 @@ gix = { version = "0.85.0", default-features = false, features = [
     "status",
     "tree-editor",
 ] }
+linkify = "0.10.0"
 log = "0.4.29"
 octocrab = { version = "0.53.1", default-features = false, features = [
     "default-client",

@@ -50,9 +50,8 @@ RE_FILENAME = re.compile(r'\d\d\d\d-\d\d-\d\d-this-week-in-rust.md$')
 # A regex that matches bare GitHub repo URLs.
 RE_GITHUB_REPO = re.compile(r'https://github.com/[^/]+/[^/]+/?[^/]*$')
 
-# A parenthesized URL is rendered as text rather than a Markdown link. This is
-# an easy formatting mistake to make when adding a submission by hand.
-RE_PARENTHESIZED_URL = re.compile(r'\((https?://[^()\s]+)\)')
+# Bare URLs remain text after Markdown rendering instead of becoming links.
+RE_BARE_URL = re.compile(r'https?://[^()\s<>]+')
 
 # A block-list of tracking parameters
 TRACKING_PARAMETERS = set([
@@ -88,6 +87,12 @@ def check_truncated_title(tag):
     if title and title.endswith('...') and len(title) == 70:
         diagnostics.warn(f'this link title may be unintentionally truncated: {repr(title)}')
 
+def check_descriptive_title(tag):
+    link = tag.get('href')
+    title = tag.get_text()
+    if title == link or link == f'mailto:{title}':
+        diagnostics.error('expected a descriptive title for link')
+
 def check_suspicious(domain, url):
   if RE_GITHUB_REPO.match(url):
     diagnostics.warn(f"link {url} is directly to a GitHub repo; "
@@ -122,15 +127,15 @@ def extract_links(html):
             link = tag.get('href')
             LOG.debug(f'found link tag: {link}')
             if strict_mode:
+                check_descriptive_title(tag)
                 check_truncated_title(tag)
                 trimmed_url = parse_url(link)
                 urls.append(trimmed_url)
         elif tag.name in ('p', 'li'):
             if strict_mode:
                 for text in tag.find_all(string=True, recursive=False):
-                    for match in RE_PARENTHESIZED_URL.finditer(text):
-                        diagnostics.error(
-                            f'bare URL is not a markdown link: {match.group(1)}')
+                    for match in RE_BARE_URL.finditer(text):
+                        diagnostics.error('expected a descriptive title for link')
         else:
             level = tag.name
             if header_level and level > header_level:
@@ -279,9 +284,11 @@ def get_recent_files(dirs, count):
 def inspect_files(file_list: list[str], *, tree: Union[pygit2.Tree, None] = None):
     """ Inspect a set of files, storing errors about duplicate links. """
     linkset = {}
+    all_links = []
 
     for index, file in enumerate(file_list):
         links = inspect_file(file, tree=tree)
+        all_links.extend(links)
         LOG.debug(f'found links: {links}')
         for link in links:
             collision = linkset.get(link)
@@ -293,6 +300,8 @@ def inspect_files(file_list: list[str], *, tree: Union[pygit2.Tree, None] = None
                         f"possible duplicate link {link} in file {file} (also found in {collision})")
             else:
                 linkset[link] = file
+
+    return all_links
 
 
 def main():

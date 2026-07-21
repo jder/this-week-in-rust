@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use linkify::{LinkFinder, LinkKind};
 use pulldown_cmark::{Event, HeadingLevel, Parser as MarkdownParser, Tag, TagEnd, html};
 use regex::Regex;
 use std::collections::BTreeMap;
@@ -32,8 +33,6 @@ static FILENAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\d\d\d\d-\d\d-\d\d-this-week-in-rust\.md$").unwrap());
 static GITHUB_REPO_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^https://github\.com/[^/]+/[^/]+/?[^/]*$").unwrap());
-static PARENTHESIZED_URL_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\((https?://[^()\s]+)\)").unwrap());
 static HTML_TAG_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?is)<(?P<tag>[a-z][a-z0-9-]*)(?:\s[^>]*)?(?P<close>/?)>").unwrap()
 });
@@ -118,6 +117,11 @@ pub fn inspect_links(text: &str) -> Report {
             }
             Event::End(TagEnd::Link) => {
                 if let Some((url, title)) = active_link.take() {
+                    if title == url || url.strip_prefix("mailto:") == Some(title.as_str()) {
+                        report
+                            .errors
+                            .push("expected a descriptive title for link".to_string());
+                    }
                     if title.ends_with("...") && title.len() == 70 {
                         report.warnings.push(format!(
                             "this link title may be unintentionally truncated: '{}'",
@@ -134,10 +138,18 @@ pub fn inspect_links(text: &str) -> Report {
                 } else if let Some((_url, title)) = active_link.as_mut() {
                     title.push_str(&value);
                 } else if headings.strict {
-                    for captures in PARENTHESIZED_URL_RE.captures_iter(&value) {
-                        report
-                            .errors
-                            .push(format!("bare URL is not a markdown link: {}", &captures[1]));
+                    for link in LinkFinder::new()
+                        .links(&value)
+                        .filter(|link| link.kind() == &LinkKind::Url)
+                    {
+                        let bare_url = link.as_str();
+                        if Url::parse(bare_url)
+                            .is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
+                        {
+                            report
+                                .errors
+                                .push("expected a descriptive title for link".to_string());
+                        }
                     }
                 }
             }
@@ -486,86 +498,85 @@ fn check_suspicious(host: &str, link: &str, report: &mut Report) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
+    use serde::Deserialize;
 
-    fn cases() -> Value {
-        serde_json::from_str(include_str!("../../validation_tests/cases.json")).unwrap()
+    #[derive(Deserialize)]
+    struct CaseMetadata {
+        files: Vec<String>,
+        links: Option<Vec<String>>,
+        #[serde(default)]
+        errors: Vec<String>,
+        #[serde(default)]
+        warnings: Vec<String>,
     }
 
-    fn expected_strings(case: &Value, key: &str) -> Vec<String> {
-        case[key]
-            .as_array()
+    struct Case {
+        path: PathBuf,
+        metadata: CaseMetadata,
+        files: Vec<(String, String)>,
+    }
+
+    fn cases() -> Vec<Case> {
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../validation_tests/cases");
+        let mut paths = fs::read_dir(directory)
             .unwrap()
-            .iter()
-            .map(|value| value.as_str().unwrap().to_string())
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "md"))
+            .collect::<Vec<_>>();
+        paths.sort();
+        paths
+            .into_iter()
+            .map(|path| {
+                let text = fs::read_to_string(&path).unwrap();
+                let mut documents = text.split("\n---\n");
+                let metadata = serde_json::from_str::<CaseMetadata>(documents.next().unwrap())
+                    .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+                let documents = documents.collect::<Vec<_>>();
+                assert_eq!(
+                    metadata.files.len(),
+                    documents.len(),
+                    "{}: virtual file count",
+                    path.display()
+                );
+                let files = metadata
+                    .files
+                    .iter()
+                    .cloned()
+                    .zip(documents.into_iter().map(str::to_string))
+                    .collect();
+                Case {
+                    path,
+                    metadata,
+                    files,
+                }
+            })
             .collect()
     }
 
     #[test]
-    fn link_contract() {
-        for case in cases()["link_cases"].as_array().unwrap() {
-            let report = inspect_links(case["markdown"].as_str().unwrap());
-            if case.get("links").is_some() {
-                assert_eq!(report.links, expected_strings(case, "links"), "{case}");
-            }
-            assert_eq!(report.errors, expected_strings(case, "errors"), "{case}");
-            assert_eq!(
-                report.warnings,
-                expected_strings(case, "warnings"),
-                "{case}"
-            );
-        }
-    }
-
-    #[test]
-    fn markdown_contract() {
-        for case in cases()["markdown_cases"].as_array().unwrap() {
-            let report = inspect_markdown(case["markdown"].as_str().unwrap(), "case.md");
-            assert_eq!(report.errors, expected_strings(case, "errors"), "{case}");
-            assert_eq!(
-                report.warnings,
-                expected_strings(case, "warnings"),
-                "{case}"
-            );
-        }
-    }
-
-    #[test]
-    fn duplicate_contract() {
-        for case in cases()["duplicate_cases"].as_array().unwrap() {
-            let files = case["files"]
-                .as_object()
-                .unwrap()
-                .iter()
-                .map(|(name, text)| (name.clone(), text.as_str().unwrap().to_string()))
-                .collect::<Vec<_>>();
+    fn validation_contract() {
+        for Case {
+            path,
+            metadata,
+            files,
+        } in cases()
+        {
             let report = inspect_named_texts(&files);
-            assert_eq!(report.errors, expected_strings(case, "errors"), "{case}");
-            assert_eq!(
-                report.warnings,
-                expected_strings(case, "warnings"),
-                "{case}"
-            );
+            if let Some(links) = metadata.links {
+                assert_eq!(report.links, links, "{}", path.display());
+            }
+            assert_eq!(report.errors, metadata.errors, "{}", path.display());
+            assert_eq!(report.warnings, metadata.warnings, "{}", path.display());
         }
     }
 
     #[test]
-    fn recent_published_corpus_contract() {
+    fn ten_most_recent_published_issues_are_clean() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        for case in cases()["corpus_cases"].as_array().unwrap() {
-            let paths = case["paths"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|path| root.join(path.as_str().unwrap()))
-                .collect::<Vec<_>>();
-            let report = inspect_files(&paths).unwrap();
-            assert_eq!(report.errors, expected_strings(case, "errors"), "{case}");
-            assert_eq!(
-                report.warnings,
-                expected_strings(case, "warnings"),
-                "{case}"
-            );
-        }
+        let paths = recent_files(root.join("content").to_str().unwrap(), 10).unwrap();
+        assert_eq!(paths.len(), 10);
+        let report = inspect_files(&paths).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        assert!(report.warnings.is_empty(), "{:?}", report.warnings);
     }
 }

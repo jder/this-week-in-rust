@@ -37,30 +37,30 @@ and just ask the editors to select the category.
 
 -->
 
-### Official
+### Official & Notable
 * [Announcing Rust 1.97.1](https://blog.rust-lang.org/2026/07/16/Rust-1.97.1/)
+* [Announcing Topcoat: a framework for building full-stack reactive web apps with Rust](https://tokio.rs/blog/2026-07-22-announcing-topcoat)
+* [Syn 3.0.0](https://github.com/dtolnay/syn/releases/tag/3.0.0)
+* [What’s New in RustRover 2026.2](https://blog.jetbrains.com/rust/2026/07/22/whats-new-in-rustrover-2026-2/)
 
 ### Newsletters
 * [The Embedded Rustacean Issue #76](https://www.theembeddedrustacean.com/p/the-embedded-rustacean-issue-76)
 
 ### Project/Tooling Updates
-* [Announcing Topcoat: a framework for building full-stack reactive web apps with Rust](https://tokio.rs/blog/2026-07-22-announcing-topcoat)
-* [Syn 3.0.0](https://github.com/dtolnay/syn/releases/tag/3.0.0)
-* [What’s New in RustRover 2026.2](https://blog.jetbrains.com/rust/2026/07/22/whats-new-in-rustrover-2026-2/)
-* [kobe 0.35.0: readiness gates and cert recycling](https://github.com/kunobi-ninja/kobe/releases/tag/v0.35.0)
-* [Comhad v0.1.0: a ranger-style tui cyberduck replacement for browsing S3](https://github.com/Eoin-McMahon/comhad/releases/tag/v0.1.0)
-* [Nova v0.2.1: computer-use MCP server](https://github.com/bigduu/Nova/releases/tag/v0.2.1)
-* [winit now has comprehensive cross-platform drag-and-drop support, exposing most of the power of the underlying OS APIs](https://github.com/rust-windowing/winit/pull/4571)
-* [crimson-crab v0.1.0 - a production-grade Rust SDK for the Claude API (streaming, tool use, prompt caching, batches)](https://github.com/singhpratech/crimson-crab/releases/tag/v0.1.0)
-* [ferrovec: dependency-light HNSW vector search in Rust, compiled to WebAssembly for private in-browser semantic search](https://singhpratech.github.io/ferrovec/)
-* [OrdoFP 0.1.0 released — a functional-programming toolbelt for Rust (HList, GAT type classes, optics, effects, monad transformers)](https://github.com/ordokr/ordofp/releases/tag/v0.1.0)
-* [Freya 0.4](https://freyaui.dev/posts/0.4)
-* [buildline: merging cargo and ninja's build profiling into one timeline](https://dev.to/nabsei/buildline-merging-cargo-and-ninjas-build-profiling-into-one-timeline-2373)
-* [cochlea 0.3.0: melody read-back, MFCC timbre, a master limiter, and MIDI import for the deterministic agent-audio engine](https://richer-richard.github.io/cochlea/determinism.html#030-additions-2026-07-22)
-* [flodl 0.6.0: multi-host heterogeneous DDP - mismatched GPUs across hosts beat the fastest card alone](https://flodl.dev/blog/then-the-cpu-died)
-* [hwatu: a daemon-based WebKitGTK browser for tiling WMs with ~13ms window spawn](https://hongnoul.github.io/hwatu/)
-* [kache 0.11.0: broader compiler coverage and libc-aware keys](https://github.com/kunobi-ninja/kache/releases/tag/v0.11.0)
-* [`tracing-reload` - reload layer without panics](https://mladedav.github.io/blog/blog/tracing-reload/)
+* [kobe](https://github.com/kunobi-ninja/kobe/releases/tag/v0.35.0) (ephemeral cluster operator) - 0.35.0 adds readiness gates and pre-expiry certificate recycling
+* [comhad](https://github.com/Eoin-McMahon/comhad/releases/tag/v0.1.0) (S3 terminal browser) - 0.1.0 introduces dual-pane browsing, previews, transfers, and sync
+* [nova](https://github.com/bigduu/Nova/releases/tag/v0.2.1) (macOS MCP server) - 0.2.1 signs and checksums plugin bundles for safer installation
+* [winit](https://github.com/rust-windowing/winit/pull/4571) (windowing event library) - latest adds comprehensive cross-platform drag-and-drop APIs across operating systems
+* [crimson-crab](https://github.com/singhpratech/crimson-crab/releases/tag/v0.1.0) (Claude API SDK) - 0.1.0 adds complete API support with panic-free guarantees
+* [ferrovec](https://singhpratech.github.io/ferrovec/) (browser vector store) - 0.3.4 adds WASM search, compaction, persistence, and cross-tab coordination
+* [ordofp](https://github.com/ordokr/ordofp/releases/tag/v0.1.0) (functional programming toolkit) - 0.1.0 launches HLists, optics, effects, and monad transformers
+* [freya](https://freyaui.dev/posts/0.4) (Rust GUI library) - 0.4 replaces Dioxus with its own reactive component model
+* [buildline](https://dev.to/nabsei/buildline-merging-cargo-and-ninjas-build-profiling-into-one-timeline-2373) (build profiling merger) - 0.1.0 introduces unified Cargo and Ninja profiling timelines
+* [cochlea](https://richer-richard.github.io/cochlea/determinism.html#030-additions-2026-07-22) (agent audio engine) - 0.3.0 adds melody read-back, MFCC timbre, limiting, and MIDI import
+* [flodl](https://flodl.dev/blog/then-the-cpu-died) (distributed training runtime) - 0.6.0 adds heterogeneous multi-host DDP across mismatched GPUs
+* [hwatu](https://hongnoul.github.io/hwatu/) (agent verification browser) - 0.6.0 introduces daemonized WebKitGTK windows with rapid startup
+* [kache](https://github.com/kunobi-ninja/kache/releases/tag/v0.11.0) (content-addressed build cache) - 0.11.0 broadens compiler support and makes cache keys libc-aware
+* [`tracing-reload`](https://mladedav.github.io/blog/blog/tracing-reload/) (reloadable tracing layer) - 0.1.0 introduces panic-resistant runtime subscriber reloading
 * [Introducing OpenTypeless: Voice Input That Actually Works](https://www.opentypeless.com/en/blog/introducing-talkmore)
 * [Reading a Rust crate's capabilities out of its compiled symbols](https://dev.to/booyaka101/reading-a-rust-crates-capabilities-out-of-its-compiled-symbols-58pb)
 

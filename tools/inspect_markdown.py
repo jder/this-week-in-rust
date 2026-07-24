@@ -28,7 +28,8 @@ VALID_TAGS = ['p', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'hr',
 
 def render_file(filename):
     """ Render markdown to html. """
-    md_text = open(filename).read()
+    with open(filename) as file:
+        md_text = file.read()
 
     # Warn if there are an odd number of backticks.
     for line in md_text.splitlines():

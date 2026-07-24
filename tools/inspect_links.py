@@ -126,6 +126,7 @@ def extract_links(html):
         if tag.name == 'a':
             link = tag.get('href')
             LOG.debug(f'found link tag: {link}')
+            # TODO: we should probably still do some checks in non-strict-mode (e.g. invalid schemes)
             if strict_mode:
                 check_descriptive_title(tag)
                 check_truncated_title(tag)
@@ -194,6 +195,7 @@ def parse_url(link):
 
     scheme = parsed_url.scheme
     if scheme not in ('mailto', 'http', 'https'):
+        # TODO: print the scheme itself for clarity when parsing malformed links
         diagnostics.error(f'unexpected/malformed link scheme: {link}')
     if scheme == 'http':
         scheme = 'https'
@@ -244,7 +246,8 @@ def inspect_file(filename, *, tree: Union[pygit2.Tree, None] = None):
             LOG.debug(f'skipping missing file in tree: {filename}')
             return []
     else:
-        md_text = open(filename).read()
+        with open(filename) as file:
+            md_text = file.read()
     html = markdown.markdown(md_text)
     links = extract_links(html)
     LOG.debug(f'examining {len(links)} links')

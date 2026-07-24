@@ -1,4 +1,4 @@
-"""Run the language-neutral validation contract against the Python checkers."""
+"""Run the markdown/link test cases against the Python checkers."""
 
 import contextlib
 import json
@@ -7,7 +7,6 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-import warnings
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -46,9 +45,6 @@ class ValidationContractTests(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        # unittest enables ResourceWarning after importing this module, while
-        # the legacy checkers intentionally keep their file-opening behavior.
-        warnings.simplefilter("ignore", ResourceWarning)
         inspect_links.diagnostics.drain_errors_and_warnings()
 
     def assert_diagnostics(self, metadata):

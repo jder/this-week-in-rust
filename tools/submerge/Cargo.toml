@@ -3,16 +3,13 @@ name = "submerge"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "submerge-inspect"
-path = "src/submerge_inspect.rs"
-
 [dependencies]
 anyhow = "1.0.100"
 clap = { version = "4.5.53", features = ["derive"] }
 env_logger = "0.11.8"
 gix = { version = "0.85.0", default-features = false, features = [
     "blocking-http-transport-reqwest-rust-tls",
+    "revision",
     "sha1",
     "status",
     "tree-editor",
@@ -32,6 +29,7 @@ octocrab = { version = "0.53.1", default-features = false, features = [
 pulldown-cmark = "0.13.4"
 regex = "1.12.2"
 serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 similar = "3.1.1"
 tempfile = "3.23.0"
 test-log = "0.2.21"
@@ -39,5 +37,4 @@ tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
 url = "2.5.7"
 
 [dev-dependencies]
-serde_json = "1.0.145"
 tempfile = "3.23.0"

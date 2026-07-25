@@ -46,8 +46,17 @@ Deleting a link and its metadata will result in that PR being untouched by later
 Review the content manually, then run the Rust validation tool:
 
 ```
-submerge-inspect --show-warnings
+submerge check --show-warnings
 ```
+
+By default this runs all checks. Use `submerge check links` or
+`submerge check markdown` to run only one group.
+
+The GitHub Actions workflow builds `submerge` from the trusted default branch
+before checking out a pull request as data. It uses `submerge ci` to run the
+repository's standard recent-file checks and compare PR link diagnostics with
+the merge base, safely render any diagnostics, and post them to the pull
+request.
 
 `submerge merge` runs the same checks on the selected draft and refuses to create
 a merge commit if it finds errors.

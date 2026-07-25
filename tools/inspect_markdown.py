@@ -60,10 +60,6 @@ def check_tags(html, file):
         if tag.name == 'li':
             if tag.get_text() == '':
                 diagnostics.error(f'{file}: empty <{tag.name}> tag after {prev_tag}')
-        if tag.name in ('ul', 'ol'):
-            items = tag.find_all('li', recursive=False)
-            if any(item.find('p', recursive=False) for item in items):
-                diagnostics.error(f'{file}: blank line splits a Markdown list')
         prev_tag = tag
 
 def main():

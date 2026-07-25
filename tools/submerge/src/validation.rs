@@ -466,10 +466,17 @@ pub(crate) fn inspect_named_texts_with(
 
 fn inspect_html_tags(text: &str, filename: &str, report: &mut Report) {
     let mut open_tags: Vec<(String, usize)> = Vec::new();
+    let comment_ranges = html_comment_ranges(text);
     for (event, range) in MarkdownParser::new(text).into_offset_iter() {
         let (Event::Html(value) | Event::InlineHtml(value)) = event else {
             continue;
         };
+        if comment_ranges
+            .iter()
+            .any(|(start, end)| (*start..*end).contains(&range.start))
+        {
+            continue;
+        }
         for tag in html_tags(&value) {
             let name = tag.name.to_string();
             if VALID_TAGS.contains(&name.as_str()) {
@@ -505,6 +512,23 @@ fn inspect_html_tags(text: &str, filename: &str, report: &mut Report) {
     for (tag, start) in open_tags {
         report_unknown_html_tag(text, filename, &tag, start, start + tag.len() + 2, report);
     }
+}
+
+fn html_comment_ranges(text: &str) -> Vec<(usize, usize)> {
+    let mut ranges = Vec::new();
+    let mut offset = 0;
+    while let Some(relative_start) = text[offset..].find("<!--") {
+        let start = offset + relative_start;
+        let after_start = start + "<!--".len();
+        let end = text[after_start..]
+            .find("-->")
+            .map_or(text.len(), |relative_end| {
+                after_start + relative_end + "-->".len()
+            });
+        ranges.push((start, end));
+        offset = end;
+    }
+    ranges
 }
 
 #[derive(Default)]

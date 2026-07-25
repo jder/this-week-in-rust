@@ -51,7 +51,7 @@ impl SectionTracker {
         let title = title.to_string();
         match level {
             HeadingLevel::H2 => {
-                self.in_community = title == COMMUNITY_HEADING;
+                self.in_community = title.eq_ignore_ascii_case(COMMUNITY_HEADING);
                 self.current_section = None;
             }
             HeadingLevel::H3 if self.in_community => {
@@ -67,6 +67,10 @@ impl SectionTracker {
 
     pub(crate) fn current_section(&self) -> Option<String> {
         self.current_section.clone()
+    }
+
+    pub(crate) fn in_community(&self) -> bool {
+        self.in_community
     }
 
     pub(crate) fn in_heading(&self) -> bool {

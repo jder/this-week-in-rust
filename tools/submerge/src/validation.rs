@@ -1,14 +1,20 @@
+use crate::md::SectionTracker;
 use anyhow::{Context, Result, bail};
+use html5ever::TokenizerResult;
+use html5ever::tendril::StrTendril;
+use html5ever::tokenizer::{
+    BufferQueue, Tag as HtmlTag, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer,
+};
 use linkify::{LinkFinder, LinkKind};
-use pulldown_cmark::{Event, HeadingLevel, Parser as MarkdownParser, Tag, TagEnd, html};
+use pulldown_cmark::{Event, Parser as MarkdownParser, Tag, TagEnd, html};
 use regex::Regex;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use url::{Url, form_urlencoded};
 
-const STRICT_TITLE: &str = "updates from rust community";
 const VALID_TAGS: &[&str] = &[
     "p",
     "a",
@@ -33,11 +39,6 @@ static FILENAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\d\d\d\d-\d\d-\d\d-this-week-in-rust\.md$").unwrap());
 static GITHUB_REPO_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^https://github\.com/[^/]+/[^/]+/?[^/]*$").unwrap());
-static HTML_TAG_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?is)<(?P<tag>[a-z][a-z0-9-]*)(?:\s[^>]*)?(?P<close>/?)>").unwrap()
-});
-static HTML_CLOSE_TAG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)</(?P<tag>[a-z][a-z0-9-]*)\s*>").unwrap());
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Report {
@@ -54,65 +55,18 @@ impl Report {
     }
 }
 
-#[derive(Default)]
-struct HeadingState {
-    strict: bool,
-    strict_level: Option<HeadingLevel>,
-    heading: Option<(HeadingLevel, String)>,
-}
-
-impl HeadingState {
-    fn start(&mut self, level: HeadingLevel) {
-        self.heading = Some((level, String::new()));
-    }
-
-    fn push_text(&mut self, text: &str) {
-        if let Some((_level, title)) = self.heading.as_mut() {
-            title.push_str(text);
-        }
-    }
-
-    fn push_break(&mut self) {
-        if let Some((_level, title)) = self.heading.as_mut() {
-            title.push(' ');
-        }
-    }
-
-    fn end(&mut self) {
-        let Some((level, title)) = self.heading.take() else {
-            return;
-        };
-        if !matches!(
-            level,
-            HeadingLevel::H1 | HeadingLevel::H2 | HeadingLevel::H3 | HeadingLevel::H4
-        ) {
-            return;
-        }
-        if self
-            .strict_level
-            .is_some_and(|strict_level| level > strict_level)
-        {
-            return;
-        }
-        self.strict = title.trim().eq_ignore_ascii_case(STRICT_TITLE);
-        self.strict_level = self.strict.then_some(level);
-    }
-
-    fn in_heading(&self) -> bool {
-        self.heading.is_some()
-    }
-}
-
 pub fn inspect_links(text: &str) -> Report {
     let mut report = Report::default();
-    let mut headings = HeadingState::default();
+    let mut sections = SectionTracker::default();
     let mut active_link: Option<(String, String)> = None;
 
     for event in MarkdownParser::new(text) {
         match event {
-            Event::Start(Tag::Heading { level, .. }) => headings.start(level),
-            Event::End(TagEnd::Heading(_)) => headings.end(),
-            Event::Start(Tag::Link { dest_url, .. }) if headings.strict => {
+            Event::Start(Tag::Heading { level, .. }) => sections.start_heading(level),
+            Event::End(TagEnd::Heading(_)) => {
+                sections.end_heading();
+            }
+            Event::Start(Tag::Link { dest_url, .. }) if sections.in_community() => {
                 active_link = Some((dest_url.to_string(), String::new()));
             }
             Event::End(TagEnd::Link) => {
@@ -133,11 +87,11 @@ pub fn inspect_links(text: &str) -> Report {
                 }
             }
             Event::Text(value) => {
-                if headings.in_heading() {
-                    headings.push_text(&value);
+                if sections.in_heading() {
+                    sections.push_text(&value);
                 } else if let Some((_url, title)) = active_link.as_mut() {
                     title.push_str(&value);
-                } else if headings.strict {
+                } else if sections.in_community() {
                     for link in LinkFinder::new()
                         .links(&value)
                         .filter(|link| link.kind() == &LinkKind::Url)
@@ -154,13 +108,13 @@ pub fn inspect_links(text: &str) -> Report {
                 }
             }
             Event::Code(value) => {
-                if headings.in_heading() {
-                    headings.push_text(&value);
+                if sections.in_heading() {
+                    sections.push_text(&value);
                 } else if let Some((_url, title)) = active_link.as_mut() {
                     title.push_str(&value);
                 }
             }
-            Event::SoftBreak | Event::HardBreak => headings.push_break(),
+            Event::SoftBreak | Event::HardBreak => sections.push_break(),
             _ => {}
         }
     }
@@ -321,29 +275,66 @@ fn inspect_html_tags(text: &str, filename: &str, report: &mut Report) {
         let (Event::Html(value) | Event::InlineHtml(value)) = event else {
             continue;
         };
-        for captures in HTML_TAG_RE.captures_iter(&value) {
-            let tag = captures["tag"].to_ascii_lowercase();
-            if VALID_TAGS.contains(&tag.as_str()) {
+        for tag in html_tags(&value) {
+            let name = tag.name.to_string();
+            if VALID_TAGS.contains(&name.as_str()) {
                 continue;
             }
-            let start = range.start + captures.get(0).unwrap().start();
-            if &captures["close"] == "/" {
-                report_unknown_html_tag(text, filename, &tag, start, range.end, report);
-            } else {
-                open_tags.push((tag, start));
-            }
-        }
-        for captures in HTML_CLOSE_TAG_RE.captures_iter(&value) {
-            let tag = captures["tag"].to_ascii_lowercase();
-            if let Some(index) = open_tags.iter().rposition(|(open_tag, _)| open_tag == &tag) {
-                let (_tag, start) = open_tags.remove(index);
-                report_unknown_html_tag(text, filename, &tag, start, range.end, report);
+            match tag.kind {
+                TagKind::StartTag => {
+                    if tag.self_closing {
+                        report_unknown_html_tag(
+                            text,
+                            filename,
+                            &name,
+                            range.start,
+                            range.end,
+                            report,
+                        );
+                    } else {
+                        open_tags.push((name, range.start));
+                    }
+                }
+                TagKind::EndTag => {
+                    if let Some(index) = open_tags
+                        .iter()
+                        .rposition(|(open_tag, _)| open_tag == &name)
+                    {
+                        let (_tag, start) = open_tags.remove(index);
+                        report_unknown_html_tag(text, filename, &name, start, range.end, report);
+                    }
+                }
             }
         }
     }
     for (tag, start) in open_tags {
         report_unknown_html_tag(text, filename, &tag, start, start + tag.len() + 2, report);
     }
+}
+
+#[derive(Default)]
+struct HtmlTagSink {
+    tags: RefCell<Vec<HtmlTag>>,
+}
+
+impl TokenSink for HtmlTagSink {
+    type Handle = ();
+
+    fn process_token(&self, token: Token, _line_number: u64) -> TokenSinkResult<Self::Handle> {
+        if let Token::TagToken(tag) = token {
+            self.tags.borrow_mut().push(tag);
+        }
+        TokenSinkResult::Continue
+    }
+}
+
+fn html_tags(html: &str) -> Vec<HtmlTag> {
+    let input = BufferQueue::default();
+    input.push_back(StrTendril::from(html));
+    let tokenizer = Tokenizer::new(HtmlTagSink::default(), Default::default());
+    while tokenizer.feed(&input) != TokenizerResult::Done {}
+    tokenizer.end();
+    tokenizer.sink.tags.into_inner()
 }
 
 fn report_unknown_html_tag(

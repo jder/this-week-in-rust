@@ -1,0 +1,22 @@
+{
+  "directories": [
+    {
+      "name": "z-older",
+      "files": [
+        "2026-01-01-this-week-in-rust.md",
+        "2026-01-02-this-week-in-rust.md"
+      ]
+    },
+    {
+      "name": "a-newer",
+      "files": [
+        "2026-02-01-this-week-in-rust.md"
+      ]
+    }
+  ],
+  "count": 2,
+  "expected": [
+    "z-older/2026-01-02-this-week-in-rust.md",
+    "a-newer/2026-02-01-this-week-in-rust.md"
+  ]
+}

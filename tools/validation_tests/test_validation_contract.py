@@ -16,6 +16,7 @@ import inspect_markdown  # noqa: E402
 
 
 CASES_DIRECTORY = Path(__file__).with_name("cases")
+RECENT_FILES_CASE = Path(__file__).with_name("recent_files.json")
 
 
 def cases():
@@ -76,6 +77,26 @@ class ValidationContractTests(unittest.TestCase):
             html = inspect_markdown.render_file(path)
             inspect_markdown.check_tags(html, path)
         self.assert_diagnostics({})
+
+    def test_recent_files_are_ordered_by_filename_across_directories(self):
+        case = json.loads(RECENT_FILES_CASE.read_text())
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            directories = []
+            for directory_case in case["directories"]:
+                directory = root / directory_case["name"]
+                directory.mkdir()
+                directories.append(directory)
+                for filename in directory_case["files"]:
+                    (directory / filename).write_text("")
+
+            paths = inspect_links.get_recent_files(
+                ":".join(map(str, directories)), case["count"]
+            )
+            relative_paths = [
+                Path(path).relative_to(root).as_posix() for path in paths
+            ]
+            self.assertEqual(relative_paths, case["expected"])
 
 
 if __name__ == "__main__":

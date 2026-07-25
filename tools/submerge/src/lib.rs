@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow, bail};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use gix::{ObjectId, Repository};
 use log::{info, warn};
 use octocrab::{
@@ -17,9 +17,12 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use url::Url;
 
+mod ci;
 mod marker;
 mod md;
 pub mod validation;
+
+pub use ci::Args as CiArgs;
 
 const GITHUB_OWNER: &str = "rust-lang";
 const GITHUB_REPO: &str = "this-week-in-rust";
@@ -41,10 +44,55 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum CommandArgs {
+    /// Validate TWiR Markdown and links.
+    Check(CheckArgs),
+    /// Run repository CI checks and report pull request diagnostics.
+    Ci(CiArgs),
     /// Discover eligible PRs and write an editable merge buffer.
     Fetch(FetchArgs),
     /// Read an edited merge buffer and create the local multi-parent merge commit.
     Merge(MergeArgs),
+}
+
+#[derive(Debug, Parser)]
+pub struct CheckArgs {
+    /// Checks to run.
+    #[arg(value_enum, default_value_t = CheckMode::All)]
+    pub mode: CheckMode,
+
+    /// Markdown files to inspect. When omitted, inspect recent files from --paths.
+    #[arg(long)]
+    pub file: Vec<PathBuf>,
+
+    /// Directory paths to inspect, separated with colons.
+    #[arg(long, default_value = "content:draft")]
+    pub paths: String,
+
+    /// Number of most-recent matching files to inspect.
+    #[arg(long, default_value_t = 25)]
+    pub num_recent: usize,
+
+    /// Print warnings as well as errors. Warnings do not affect the exit status.
+    #[arg(long)]
+    pub show_warnings: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]
+pub enum CheckMode {
+    #[default]
+    All,
+    Links,
+    Markdown,
+}
+
+impl From<CheckMode> for validation::Inspection {
+    fn from(mode: CheckMode) -> Self {
+        match mode {
+            CheckMode::All => Self::All,
+            CheckMode::Links => Self::Links,
+            CheckMode::Markdown => Self::Markdown,
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -138,8 +186,32 @@ struct CommandContext {
 
 pub async fn run(args: Args) -> Result<()> {
     match args.command {
+        CommandArgs::Check(args) => run_check(args),
+        CommandArgs::Ci(args) => ci::run(args).await,
         CommandArgs::Fetch(args) => run_fetch(args).await,
         CommandArgs::Merge(args) => run_merge(args),
+    }
+}
+
+fn run_check(args: CheckArgs) -> Result<()> {
+    let files = if args.file.is_empty() {
+        validation::recent_files(&args.paths, args.num_recent)?
+    } else {
+        args.file
+    };
+    let report = validation::inspect_files_with(&files, args.mode.into())?;
+    for error in &report.errors {
+        println!("* error: {error}");
+    }
+    if args.show_warnings {
+        for warning in &report.warnings {
+            println!("* warning: {warning}");
+        }
+    }
+    if report.errors.is_empty() {
+        Ok(())
+    } else {
+        bail!("validation found {} error(s)", report.errors.len())
     }
 }
 
@@ -988,6 +1060,37 @@ fn print_summary(submissions: &[Submission], skipped: &[SkippedPr]) {
 mod tests {
     use super::*;
     use test_log::test;
+
+    #[test]
+    fn check_defaults_to_all_checks() {
+        let args = Args::try_parse_from(["submerge", "check"]).unwrap();
+        let CommandArgs::Check(args) = args.command else {
+            panic!("expected check command");
+        };
+        assert_eq!(args.mode, CheckMode::All);
+    }
+
+    #[test]
+    fn check_accepts_each_check_mode() {
+        for (name, expected) in [
+            ("all", CheckMode::All),
+            ("links", CheckMode::Links),
+            ("markdown", CheckMode::Markdown),
+        ] {
+            let args = Args::try_parse_from(["submerge", "check", name]).unwrap();
+            let CommandArgs::Check(args) = args.command else {
+                panic!("expected check command");
+            };
+            assert_eq!(args.mode, expected);
+        }
+    }
+
+    #[test]
+    fn ci_accepts_no_additional_arguments() {
+        let args = Args::try_parse_from(["submerge", "ci"]).unwrap();
+        assert!(matches!(args.command, CommandArgs::Ci(_)));
+        assert!(Args::try_parse_from(["submerge", "ci", "comment"]).is_err());
+    }
 
     fn test_signature() -> gix::actor::Signature {
         gix::actor::Signature {

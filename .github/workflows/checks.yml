@@ -1,94 +1,59 @@
 name: Correctness Checks
-on:
-  pull_request:
 
-  # We avoid running the push event on PR branches so that
-  # they are instead run through pull_request and we get the merge base
-  # for use below.
+on:
+  pull_request_target:
   push:
     branches:
       - main
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  Run-Markdown-Checks:
-    name: Run Markdown Checks
+  check:
+    name: Run content checks
     runs-on: ubuntu-24.04
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      # pull_request_target uses the workflow from the default branch. Build
+      # that trusted copy before any untrusted pull request files exist.
+      - name: Checkout trusted source
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build trusted submerge
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/trusted-submerge-target
+        run: cargo build --locked --release --manifest-path tools/submerge/Cargo.toml
+
+      # Keep the untrusted checkout separate from both the trusted source and
+      # the compiled binary. Nothing from this directory is executed.
+      - name: Checkout pull request as data
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: actions/checkout@v6
+        with:
           fetch-depth: 0
-      - name: Install Python dependencies
-        uses: py-actions/py-dependency-install@9c419aa98bfb42280bdae2b0a736befd9b01e3b1 # v4
-        with:
-          path: "tools/requirements.txt"
-          update-pip: "false"
-          update-setuptools: "false"
-          update-wheel: "false"
-      - name: Test validation contract
-        run: python3 -m unittest discover -s tools/validation_tests -p 'test_*.py'
-      - name: Compute PR diff base
-        if: ${{ github.event_name == 'pull_request' }}
-        id: base
-        shell: bash
-        run: |
-            BASE="$(git merge-base \
-                "${{ github.event.pull_request.base.sha }}" \
-                "${{ github.event.pull_request.head.sha }}")"
+          path: pull-request
+          persist-credentials: false
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-            echo "base=$BASE" >> "$GITHUB_OUTPUT"
-      - name: inspect_links for main
-        if: ${{ github.event_name == 'push' }}
-        run: python3 tools/inspect_links.py
-      - name: inspect_links for pull request
-        if: ${{ github.event_name == 'pull_request' }}
-        id: inspect_links_pr
-        shell: bash
+      - name: Check pull request data
+        if: ${{ github.event_name == 'pull_request_target' }}
+        working-directory: pull-request
         env:
-          CHECK_OUTPUT_FILE: ${{ runner.temp }}/inspect-links-pr.txt
-        run: |
-            set +e
-            python3 tools/inspect_links.py \
-                --since "${{ steps.base.outputs.base }}" \
-                --show-warnings > "$CHECK_OUTPUT_FILE"
-            status="$?"
-            cat "$CHECK_OUTPUT_FILE"
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SUBMERGE_CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SUBMERGE_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUBMERGE_CI_PR_NUMBER: ${{ github.event.pull_request.number }}
+          SUBMERGE_CI_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: ${{ runner.temp }}/trusted-submerge-target/release/submerge ci
 
-            exit "$status"
-      - name: inspect_markdown for main
+      - name: Check main
         if: ${{ github.event_name == 'push' }}
-        run: python3 tools/inspect_markdown.py --num-recent 5
-      - name: inspect_markdown for pull request
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        id: inspect_markdown_pr
-        shell: bash
-        env:
-          CHECK_OUTPUT_FILE: ${{ runner.temp }}/inspect-markdown-pr.txt
-        run: |
-            set +e
-            python3 tools/inspect_markdown.py --num-recent 5 > "$CHECK_OUTPUT_FILE"
-            status="$?"
-            cat "$CHECK_OUTPUT_FILE"
-
-            exit "$status"
-      # Upload the check output so the workflow_run workflow can fetch it later.
-      # That follow-up workflow has permission to write PR comments, unlike this
-      # pull_request workflow which runs on possibly-untrusted forks.
-      - name: Prepare PR check output metadata
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        shell: bash
-        run: echo "${{ github.event.pull_request.number }}" > "${{ runner.temp }}/pr-number.txt"
-      - name: Upload PR check output
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-check-output
-          path: |
-            ${{ runner.temp }}/pr-number.txt
-            ${{ runner.temp }}/inspect-links-pr.txt
-            ${{ runner.temp }}/inspect-markdown-pr.txt
-          if-no-files-found: ignore
+        run: ${{ runner.temp }}/trusted-submerge-target/release/submerge ci

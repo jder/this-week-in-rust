@@ -47,6 +47,8 @@ and just ask the editors to select the category.
 
 * [Base-only Project/Tooling test link](https://example.com/base-only-project-tooling-link)
 
+* [External Project/Tooling test link](https://example.com/external-project-tooling-link)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

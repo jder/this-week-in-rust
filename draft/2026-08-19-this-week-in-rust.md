@@ -45,6 +45,8 @@ and just ask the editors to select the category.
 
 ### Project/Tooling Updates
 
+* [Intentional no-write-permission test link](https://example.com/write-permission-denied)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs

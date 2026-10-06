@@ -48,6 +48,8 @@ and just ask the editors to select the category.
 <!-- IMPORTANT NOTE: We are no longer accepting pull request submissions for the Project/Tooling Updates section.
 See here for details: https://github.com/rust-lang/this-week-in-rust/issues/8575 -->
 
+* [hi there](https://example.com)
+
 ### Observations/Thoughts
 
 ### Rust Walkthroughs
